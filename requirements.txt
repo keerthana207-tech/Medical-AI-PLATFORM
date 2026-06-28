@@ -1,0 +1,15 @@
+torch
+torchvision
+timm
+medmnist
+fastapi
+uvicorn[standard]
+pydantic
+scikit-learn
+pandas
+matplotlib
+python-multipart
+pytest
+requests
+numpy
+pillow

@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./saved_models:/app/saved_models
+      - ./metrics:/app/metrics
+      - ./datasets:/app/datasets
+    environment:
+      - PROJECT_NAME=Medical AI Platform
+      - DATASET_NAME=pathmnist
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always

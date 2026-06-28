@@ -1,0 +1,28 @@
+# Virtual Environment
+venv/
+.env
+
+# Portable Node.js and Frontend dependencies
+node-portable/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Dataset files (large binaries)
+datasets/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDE settings and logs
+.vscode/
+.idea/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

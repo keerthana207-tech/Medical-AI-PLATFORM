@@ -1,0 +1,30 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies (needed for matplotlib/numpy and general utilities)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY requirements.txt .
+# Install PyTorch CPU first to keep image lightweight and avoid downloading huge CUDA files
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source folders
+COPY backend/ ./backend/
+COPY models/ ./models/
+COPY training/ ./training/
+COPY datasets/ ./datasets/
+COPY saved_models/ ./saved_models/
+COPY metrics/ ./metrics/
+
+EXPOSE 8000
+
+ENV PYTHONPATH=/app
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
