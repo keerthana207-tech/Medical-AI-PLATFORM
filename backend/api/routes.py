@@ -7,7 +7,9 @@ from fastapi.responses import JSONResponse
 import torch
 from PIL import Image
 from backend.configs.config import settings
-from training.predict import predict_single_image
+from training.predict import predict_single_image, load_inference_model, preprocess_image
+from backend.explainability.gradcam import get_gradcam_base64
+from backend.explainability.attention import get_attention_base64
 
 router = APIRouter()
 
@@ -58,7 +60,7 @@ def get_dataset_info():
 @router.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
     """
-    Run inference on uploaded image using CNN and ViT models.
+    Run inference on uploaded image using CNN and ViT models and generate explainability maps.
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file is not an image.")
@@ -66,11 +68,23 @@ async def predict_image(file: UploadFile = File(...)):
     # Read image contents
     contents = await file.read()
     
-    # Run real prediction for CNN if checkpoint exists
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 1. Base64 Encode Original Image for frontend verification
+    original_base64 = base64.b64encode(contents).decode("utf-8")
+    
+    # 2. Run prediction and Grad-CAM for CNN
+    cnn_results = None
+    cnn_gradcam = ""
     try:
         image = Image.open(io.BytesIO(contents))
         if os.path.exists(settings.CNN_CHECKPOINT_PATH):
-            cnn_results = predict_single_image(image, model_type="cnn", checkpoint_path=settings.CNN_CHECKPOINT_PATH)
+            cnn_results = predict_single_image(image, model_type="cnn", checkpoint_path=settings.CNN_CHECKPOINT_PATH, device=str(device))
+            
+            # Generate Grad-CAM overlay
+            cnn_model = load_inference_model("cnn", settings.CNN_CHECKPOINT_PATH, device)
+            input_tensor_cnn = preprocess_image(image, "cnn").to(device)
+            cnn_gradcam = get_gradcam_base64(cnn_model, input_tensor_cnn, image, class_idx=cnn_results["class_index"])
         else:
             # Fallback to simulated prediction
             cnn_probs = [0.05] * settings.NUM_CLASSES
@@ -85,13 +99,21 @@ async def predict_image(file: UploadFile = File(...)):
                 "inference_time_ms": 12.5
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CNN Prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"CNN pipeline failed: {str(e)}")
     
-    # Run real prediction for ViT if checkpoint exists, else mock
+    # 3. Run prediction and Attention Map for ViT
+    vit_results = None
+    vit_attention = ""
     try:
         if os.path.exists(settings.VIT_CHECKPOINT_PATH):
-            vit_results = predict_single_image(image, model_type="vit", checkpoint_path=settings.VIT_CHECKPOINT_PATH)
+            vit_results = predict_single_image(image, model_type="vit", checkpoint_path=settings.VIT_CHECKPOINT_PATH, device=str(device))
+            
+            # Generate ViT Attention overlay
+            vit_model = load_inference_model("vit", settings.VIT_CHECKPOINT_PATH, device)
+            input_tensor_vit = preprocess_image(image, "vit").to(device)
+            vit_attention = get_attention_base64(vit_model, input_tensor_vit, image)
         else:
+            # Fallback to simulated prediction
             vit_probs = [0.04] * settings.NUM_CLASSES
             vit_probs[8] = 0.70
             vit_confidence = max(vit_probs)
@@ -105,7 +127,7 @@ async def predict_image(file: UploadFile = File(...)):
             }
     except Exception as e:
         vit_results = {
-            "error": f"ViT prediction failed: {str(e)}",
+            "error": f"ViT pipeline failed: {str(e)}",
             "class_index": -1,
             "class_name": "Error",
             "confidence": 0.0,
@@ -119,6 +141,11 @@ async def predict_image(file: UploadFile = File(...)):
         "predictions": {
             "cnn": cnn_results,
             "vit": vit_results
+        },
+        "explainability": {
+            "original_image_base64": original_base64,
+            "cnn_gradcam_base64": cnn_gradcam,
+            "vit_attention_base64": vit_attention
         },
         "image_id": f"img_{int(time.time())}"
     }

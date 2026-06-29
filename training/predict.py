@@ -4,6 +4,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
 from models.cnn import CustomCNN
+from models.vit import VisionTransformerWrapper
 from datasets.medmnist_loader import IMAGENET_MEAN, IMAGENET_STD
 from backend.configs.config import settings
 
@@ -14,8 +15,7 @@ def load_inference_model(model_type: str, checkpoint_path: str, device: torch.de
     if model_type.lower() == "cnn":
         model = CustomCNN(in_channels=3, num_classes=settings.NUM_CLASSES)
     elif model_type.lower() == "vit":
-        import timm
-        model = timm.create_model(settings.VIT_MODEL_NAME, pretrained=False, num_classes=settings.NUM_CLASSES)
+        model = VisionTransformerWrapper(pretrained=False, num_classes=settings.NUM_CLASSES)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
         

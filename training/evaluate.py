@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, confusion_matrix
 from models.cnn import CustomCNN
+from models.vit import VisionTransformerWrapper
 from datasets.medmnist_loader import get_dataloader
 from backend.configs.config import settings
 
@@ -17,9 +18,7 @@ def load_model(model_type: str, checkpoint_path: str, device: torch.device) -> n
     if model_type.lower() == "cnn":
         model = CustomCNN(in_channels=3, num_classes=settings.NUM_CLASSES)
     elif model_type.lower() == "vit":
-        # Dynamic import of timm since ViT is developed in Phase 3
-        import timm
-        model = timm.create_model(settings.VIT_MODEL_NAME, pretrained=False, num_classes=settings.NUM_CLASSES)
+        model = VisionTransformerWrapper(pretrained=False, num_classes=settings.NUM_CLASSES)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
         
