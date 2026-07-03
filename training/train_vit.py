@@ -94,11 +94,23 @@ def train_vit(
         "val_acc": []
     }
     
-    checkpoint_path = settings.VIT_CHECKPOINT_PATH
-    if resume and os.path.exists(checkpoint_path):
-        print(f"Resuming training from checkpoint: {checkpoint_path}")
+    last_checkpoint_path = os.path.join(
+    settings.MODELS_DIR,
+    "vit_last.pth"
+    )
+
+    best_checkpoint_path = settings.VIT_CHECKPOINT_PATH
+
+    resume_checkpoint_path = (
+        last_checkpoint_path
+        if os.path.exists(last_checkpoint_path)
+        else best_checkpoint_path
+    )
+    
+    if resume and os.path.exists(resume_checkpoint_path):
+        print(f"Resuming training from checkpoint: {resume_checkpoint_path}")
         try:
-            checkpoint = torch.load(checkpoint_path, map_location=device)
+            checkpoint = torch.load(resume_checkpoint_path, map_location=device)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             start_epoch = checkpoint['epoch'] + 1
@@ -114,6 +126,7 @@ def train_vit(
     training_start_time = time.time()
     
     for epoch in range(start_epoch, epochs):
+        
         epoch_start_time = time.time()
         
         # --- Training Phase ---
@@ -123,6 +136,7 @@ def train_vit(
         total = 0
         
         for batch_idx, (images, labels) in enumerate(train_loader):
+            
             images, labels = images.to(device), labels.to(device)
             labels = labels.squeeze().long()
             if labels.dim() == 0:
@@ -184,7 +198,7 @@ def train_vit(
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
             epochs_no_improve = 0
-            print(f"--> Saving new best model to {checkpoint_path}")
+            print(f"--> Saving new best model to {best_checkpoint_path}")
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -193,13 +207,27 @@ def train_vit(
                 'history': history,
                 'num_parameters': num_params,
                 'model_size_mb': model_size_mb
-            }, checkpoint_path)
+            }, best_checkpoint_path)
         else:
             epochs_no_improve += 1
             if epochs_no_improve >= patience:
                 print(f"Early stopping triggered at epoch {epoch+1}!")
                 break
-                
+        epoch_checkpoint = os.path.join(
+        settings.MODELS_DIR,
+        "vit_last.pth"
+        )
+
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'best_val_loss': best_val_loss,
+            'history': history,
+            'num_parameters': num_params,
+            'model_size_mb': model_size_mb
+        }, epoch_checkpoint)
+        print(f"Checkpoint saved: {epoch_checkpoint}")        
     total_training_time = time.time() - training_start_time
     print(f"Training completed in {total_training_time/60:.2f} minutes.")
     

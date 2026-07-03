@@ -1,5 +1,6 @@
 import time
 import io
+import base64
 import json
 import os
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -99,19 +100,56 @@ async def predict_image(file: UploadFile = File(...)):
                 "inference_time_ms": 12.5
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CNN pipeline failed: {str(e)}")
+        import traceback
+
+        print("=" * 80)
+        traceback.print_exc()
+        print("=" * 80)
+
+        raise
     
     # 3. Run prediction and Attention Map for ViT
     vit_results = None
     vit_attention = ""
     try:
         if os.path.exists(settings.VIT_CHECKPOINT_PATH):
-            vit_results = predict_single_image(image, model_type="vit", checkpoint_path=settings.VIT_CHECKPOINT_PATH, device=str(device))
-            
-            # Generate ViT Attention overlay
-            vit_model = load_inference_model("vit", settings.VIT_CHECKPOINT_PATH, device)
-            input_tensor_vit = preprocess_image(image, "vit").to(device)
-            vit_attention = get_attention_base64(vit_model, input_tensor_vit, image)
+            # -------------------------------
+# Run ViT prediction
+# -------------------------------
+            vit_results = predict_single_image(
+                image,
+                model_type="vit",
+                checkpoint_path=settings.VIT_CHECKPOINT_PATH,
+                device=str(device)
+            )
+
+# -------------------------------
+# Generate attention map separately
+# -------------------------------
+            try:
+                vit_model = load_inference_model(
+                    "vit",
+                    settings.VIT_CHECKPOINT_PATH,
+                    device
+                )
+
+                input_tensor_vit = preprocess_image(image, "vit").to(device)
+
+                vit_attention = get_attention_base64(
+                    vit_model,
+                    input_tensor_vit,
+                    image
+                )
+
+            except Exception as e:
+                import traceback
+
+                print("=" * 80)
+                print("ViT Attention Map Failed")
+                traceback.print_exc()
+                print("=" * 80)
+
+                vit_attention = ""
         else:
             # Fallback to simulated prediction
             vit_probs = [0.04] * settings.NUM_CLASSES
@@ -126,6 +164,13 @@ async def predict_image(file: UploadFile = File(...)):
                 "inference_time_ms": 45.2
             }
     except Exception as e:
+        import traceback
+
+        print("=" * 80)
+        print("ViT PIPELINE FAILED")
+        traceback.print_exc()
+        print("=" * 80)
+
         vit_results = {
             "error": f"ViT pipeline failed: {str(e)}",
             "class_index": -1,
