@@ -13,3 +13,5 @@ pytest
 requests
 numpy
 pillow
+opencv-python
+grad-cam
