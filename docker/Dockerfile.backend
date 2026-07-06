@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY models/ ./models/
 COPY training/ ./training/
-COPY datasets/ ./datasets/
+COPY datasets/medmnist_loader.py ./datasets/medmnist_loader.py
+
 COPY saved_models/ ./saved_models/
 COPY metrics/ ./metrics/
 
