@@ -251,14 +251,35 @@ function App() {
   };
 
   // ---- Model Comparison: winner-per-metric summary -----------------
+  // Helper to format values elegantly or return "Not Evaluated"
+  const formatMetricValue = (val, isPercentage = false, decimals = 4, suffix = "") => {
+    if (val === null || val === undefined || val === "Not Evaluated") {
+      return "Not Evaluated";
+    }
+    const num = Number(val);
+    if (isNaN(num)) return "Not Evaluated";
+    if (isPercentage) {
+      return `${(num * 100).toFixed(2)}%`;
+    }
+    return `${num.toFixed(decimals)}${suffix}`;
+  };
+
   // Determines, for each shared metric, whether CNN or ViT performs
   // better (lower-is-better for time/size), then rolls up an overall
   // verdict. Purely derived from the existing /api/metrics response.
   const getWinner = (cnnVal, vitVal, lowerIsBetter = false) => {
-    if (cnnVal == null || vitVal == null) return null;
-    if (cnnVal === vitVal) return 'tie';
-    if (lowerIsBetter) return cnnVal < vitVal ? 'cnn' : 'vit';
-    return cnnVal > vitVal ? 'cnn' : 'vit';
+    if (
+      cnnVal == null ||
+      vitVal == null ||
+      cnnVal === "Not Evaluated" ||
+      vitVal === "Not Evaluated"
+    ) return null;
+    const cnnNum = Number(cnnVal);
+    const vitNum = Number(vitVal);
+    if (isNaN(cnnNum) || isNaN(vitNum)) return null;
+    if (cnnNum === vitNum) return 'tie';
+    if (lowerIsBetter) return cnnNum < vitNum ? 'cnn' : 'vit';
+    return cnnNum > vitNum ? 'cnn' : 'vit';
   };
 
   const computeWinnerSummary = () => {
@@ -300,7 +321,7 @@ function App() {
           </div>
           <div>
             <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              Medical AI Platform
+              PathExplain AI
             </h1>
             <p className="text-xs text-neutral-500">Colorectal Histology Analysis (PathMNIST)</p>
           </div>
@@ -312,7 +333,6 @@ function App() {
             { id: 'home', label: 'Overview', icon: Cpu },
             { id: 'predict', label: 'Predictions', icon: Upload },
             { id: 'performance', label: 'Model Comparison', icon: BarChart2 },
-            { id: 'dataset', label: 'PathMNIST Dataset', icon: Database },
             { id: 'about', label: 'About', icon: Info },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -688,25 +708,25 @@ function App() {
                       <>
                         <tr className="border-b border-neutral-850 hover:bg-neutral-900/30">
                           <td className="py-3 px-4 font-semibold text-indigo-400">{metrics.cnn?.model_name || "Custom CNN"}</td>
-                          <td className="py-3 px-4 text-right">{((metrics.cnn?.accuracy || 0) * 100).toFixed(2)}%</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.precision || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.recall || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.f1_score || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.roc_auc || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.inference_time_ms_avg || 0).toFixed(2)} ms</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.num_parameters || 0).toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.cnn?.model_size_mb || 0).toFixed(2)} MB</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.accuracy, true)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.precision)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.recall)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.f1_score)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.roc_auc)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.inference_time_ms_avg, false, 2, " ms")}</td>
+                          <td className="py-3 px-4 text-right">{metrics.cnn?.num_parameters != null && metrics.cnn?.num_parameters !== "Not Evaluated" ? metrics.cnn.num_parameters.toLocaleString() : "Not Evaluated"}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.cnn?.model_size_mb, false, 2, " MB")}</td>
                         </tr>
                         <tr className="hover:bg-neutral-900/30">
                           <td className="py-3 px-4 font-semibold text-purple-400">{metrics.vit?.model_name || "Vision Transformer"}</td>
-                          <td className="py-3 px-4 text-right">{((metrics.vit?.accuracy || 0) * 100).toFixed(2)}%</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.precision || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.recall || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.f1_score || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.roc_auc || 0).toFixed(4)}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.inference_time_ms_avg || 0).toFixed(2)} ms</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.num_parameters || 0).toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right">{(metrics.vit?.model_size_mb || 0).toFixed(2)} MB</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.accuracy, true)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.precision)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.recall)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.f1_score)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.roc_auc)}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.inference_time_ms_avg, false, 2, " ms")}</td>
+                          <td className="py-3 px-4 text-right">{metrics.vit?.num_parameters != null && metrics.vit?.num_parameters !== "Not Evaluated" ? metrics.vit.num_parameters.toLocaleString() : "Not Evaluated"}</td>
+                          <td className="py-3 px-4 text-right">{formatMetricValue(metrics.vit?.model_size_mb, false, 2, " MB")}</td>
                         </tr>
                       </>
                     ) : (
@@ -766,111 +786,10 @@ function App() {
               </div>
             </div>
 
-            {/* Confusion Matrices */}
-            {metrics && (
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* CNN Matrix */}
-                <div className="border border-neutral-900 bg-neutral-900/20 p-6 rounded-xl space-y-3">
-                  <h4 className="text-sm font-bold text-indigo-400">CNN Confusion Matrix (Colorectal Tissue Classifications)</h4>
-                  <div className="grid grid-cols-9 gap-1 bg-neutral-950 p-2 rounded-lg aspect-square">
-                    {metrics.cnn?.confusion_matrix?.map((row, rIdx) =>
-                      row.map((val, cIdx) => {
-                        const isDiagonal = rIdx === cIdx;
-                        const opacity = val > 0 ? Math.min(val / 100 + 0.15, 0.95) : 0.05;
-                        const trueLabel = datasetInfo?.classes?.[rIdx] ?? rIdx;
-                        const predLabel = datasetInfo?.classes?.[cIdx] ?? cIdx;
-                        return (
-                          <div
-                            key={`cnn-cm-${rIdx}-${cIdx}`}
-                            style={{ backgroundColor: isDiagonal ? `rgba(99, 102, 241, ${opacity})` : `rgba(244, 63, 94, ${opacity})` }}
-                            className="aspect-square flex items-center justify-center text-[8px] font-bold border border-neutral-900/30 rounded"
-                            title={`True: ${trueLabel}, Pred: ${predLabel} = ${val}`}
-                          >
-                            {val}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* ViT Matrix */}
-                <div className="border border-neutral-900 bg-neutral-900/20 p-6 rounded-xl space-y-3">
-                  <h4 className="text-sm font-bold text-purple-400">ViT Confusion Matrix (Colorectal Tissue Classifications)</h4>
-                  <div className="grid grid-cols-9 gap-1 bg-neutral-950 p-2 rounded-lg aspect-square">
-                    {metrics.vit?.confusion_matrix?.map((row, rIdx) =>
-                      row.map((val, cIdx) => {
-                        const isDiagonal = rIdx === cIdx;
-                        const opacity = val > 0 ? Math.min(val / 100 + 0.15, 0.95) : 0.05;
-                        const trueLabel = datasetInfo?.classes?.[rIdx] ?? rIdx;
-                        const predLabel = datasetInfo?.classes?.[cIdx] ?? cIdx;
-                        return (
-                          <div
-                            key={`vit-cm-${rIdx}-${cIdx}`}
-                            style={{ backgroundColor: isDiagonal ? `rgba(168, 85, 247, ${opacity})` : `rgba(244, 63, 94, ${opacity})` }}
-                            className="aspect-square flex items-center justify-center text-[8px] font-bold border border-neutral-900/30 rounded"
-                            title={`True: ${trueLabel}, Pred: ${predLabel} = ${val}`}
-                          >
-                            {val}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* TAB 4: DATASET DETAILS */}
-        {activeTab === 'dataset' && (
-          <div className="space-y-6 animate-fade-in">
-            {datasetInfo ? (
-              <div className="border border-neutral-900 bg-neutral-900/20 p-6 rounded-xl space-y-6">
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">{datasetInfo.name}</span>
-                  <h3 className="text-xl font-bold">Colorectal Histology Patches</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed max-w-4xl">{datasetInfo.description}</p>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6 pt-4 border-t border-neutral-850">
-                  <div className="bg-neutral-950/40 p-4 border border-neutral-900 rounded-lg space-y-1">
-                    <span className="text-[10px] text-neutral-500 uppercase font-semibold">Image Dimensions</span>
-                    <div className="text-lg font-bold">{datasetInfo.image_dimension}</div>
-                  </div>
-                  <div className="bg-neutral-950/40 p-4 border border-neutral-900 rounded-lg space-y-1">
-                    <span className="text-[10px] text-neutral-500 uppercase font-semibold">Total Slide Classes</span>
-                    <div className="text-lg font-bold">{datasetInfo.num_classes} Distinct Tissues</div>
-                  </div>
-                  <div className="bg-neutral-950/40 p-4 border border-neutral-900 rounded-lg space-y-1">
-                    <span className="text-[10px] text-neutral-500 uppercase font-semibold">Splits (Train / Val / Test)</span>
-                    <div className="text-lg font-bold">
-                      {datasetInfo.splits?.train.toLocaleString()} / {datasetInfo.splits?.validation.toLocaleString()} / {datasetInfo.splits?.test.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-neutral-850">
-                  <h4 className="text-sm font-bold text-neutral-300">Tissue Classification Labels</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {datasetInfo.classes?.map((cls, idx) => (
-                      <div key={idx} className="flex items-center space-x-2 text-xs bg-neutral-950/20 border border-neutral-900 p-2.5 rounded-lg">
-                        <span className="h-2 w-2 rounded-full bg-indigo-500/80" />
-                        <span className="font-semibold text-neutral-500">[{idx}]</span>
-                        <span className="capitalize text-neutral-300 font-medium">{cls}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-neutral-500">Loading dataset details...</div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 5: ABOUT (rewritten completely) */}
+        {/* TAB 4: ABOUT (rewritten completely) */}
         {activeTab === 'about' && (
           <div className="space-y-6 animate-fade-in">
 
@@ -915,12 +834,11 @@ function App() {
                     This project's copy of the dataset has <strong>{datasetInfo.num_classes}</strong> tissue
                     categories{datasetInfo?.classes?.length ? (
                       <> — {datasetInfo.classes.slice(0, 3).join(', ')}{datasetInfo.classes.length > 3 ? ', and others' : ''}</>
-                    ) : null}. See the <em>PathMNIST Dataset</em> tab for the full list and split sizes.
+                    ) : null}.
                   </>
                 ) : (
                   <>It typically includes several tissue categories such as normal mucosa, tumor
-                  epithelium, stroma, muscle, and lymphocytes. See the <em>PathMNIST Dataset</em> tab
-                  once it loads for the exact categories used here.</>
+                  epithelium, stroma, muscle, and lymphocytes.</>
                 )}
               </p>
             </div>
@@ -1005,21 +923,6 @@ function App() {
               </div>
             </div>
 
-            {/* Project Objective */}
-            <div className="border border-neutral-900 bg-neutral-900/20 p-6 rounded-xl space-y-3">
-              <h3 className="text-lg font-bold flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-indigo-400" />
-                <span>Project Objective</span>
-              </h3>
-              <p className="text-sm text-neutral-400 leading-relaxed max-w-4xl">
-                PathExplain AI is a B.Tech major project built to explore and compare two different
-                deep learning approaches — a CNN and a Vision Transformer — for classifying
-                colorectal histology tissue patches, while making both models' decisions
-                explainable through Grad-CAM and ViT Grad-CAM visualizations. The goal is to
-                demonstrate not just <em>what</em> a model predicts, but a transparent, honest view
-                of <em>how</em> it arrived there — for learning and research purposes.
-              </p>
-            </div>
           </div>
         )}
 
@@ -1027,7 +930,7 @@ function App() {
 
       {/* Footer */}
       <footer className="border-t border-neutral-900 bg-neutral-950/40 px-6 py-4 text-center text-xs text-neutral-600">
-        &copy; {new Date().getFullYear()} Medical AI Model Comparison and Explainability Platform. All rights reserved.
+        &copy; {new Date().getFullYear()} PathExplain AI. All rights reserved.
       </footer>
     </div>
   );

@@ -12,7 +12,7 @@ services:
       - ./metrics:/app/metrics
       - ./datasets:/app/datasets
     environment:
-      - PROJECT_NAME=Medical AI Platform
+      - PROJECT_NAME=PathExplain AI
       - DATASET_NAME=pathmnist
     restart: always
 

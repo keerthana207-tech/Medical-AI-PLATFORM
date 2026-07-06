@@ -20,7 +20,7 @@ class Settings:
     METRICS_DIR: Path = METRICS_DIR
 
     # App Settings
-    PROJECT_NAME: str = "Medical AI Model Comparison and Explainability Platform"
+    PROJECT_NAME: str = "PathExplain AI"
     API_V1_STR: str = "/api"
     
     # Dataset Settings

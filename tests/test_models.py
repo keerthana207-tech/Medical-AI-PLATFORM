@@ -27,9 +27,9 @@ def test_cnn_gradcam_layer():
     last_conv = model.get_last_conv_layer()
     assert isinstance(last_conv, torch.nn.Conv2d), "Expected Conv2d layer as target for Grad-CAM"
     
-def test_vit_dimensions_and_attention_hooks():
+def test_vit_dimensions_and_gradcam_compatibility():
     """
-    Test VisionTransformerWrapper forward pass and attention hooks.
+    Test VisionTransformerWrapper forward pass and Grad-CAM target layer availability.
     """
     # Initialize wrapper without pretrained weights for fast offline unit testing
     model = VisionTransformerWrapper(pretrained=False, num_classes=settings.NUM_CLASSES)
@@ -44,14 +44,7 @@ def test_vit_dimensions_and_attention_hooks():
     # Check predictions dimensions
     assert output.shape == (2, settings.NUM_CLASSES), f"Expected shape (2, {settings.NUM_CLASSES}), got {output.shape}"
     
-    # Check captured attention weights
-    attn_weights = model.get_last_self_attention()
-    assert attn_weights is not None, "Hook failed to capture attention weights"
-    
-    # Expected shape: [B, num_heads, num_tokens, num_tokens]
-    # For vit_tiny_patch16_224, num_heads = 3, num_tokens = 197
-    assert attn_weights.dim() == 4, "Attention weights tensor must have 4 dimensions"
-    assert attn_weights.shape[0] == 2, "Attention batch dimension does not match input"
-    assert attn_weights.shape[1] == 3, "Expected 3 attention heads in vit_tiny"
-    assert attn_weights.shape[2] == 197, "Expected 197 tokens in vit_tiny"
-    assert attn_weights.shape[3] == 197, "Expected 197 tokens in vit_tiny"
+    # Check that Grad-CAM target layer blocks exist
+    assert hasattr(model.model, 'blocks'), "timm model is missing transformer blocks"
+    assert len(model.model.blocks) > 0, "transformer blocks list is empty"
+    assert hasattr(model.model.blocks[-1], 'norm1'), "timm model is missing norm1 block for Grad-CAM"
