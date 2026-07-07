@@ -12,7 +12,7 @@ app = FastAPI(
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; can restrict in production
+    allow_origins=["https://medical-ai-platform-1-u7df.onrender.com/"],  # For development; can restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
