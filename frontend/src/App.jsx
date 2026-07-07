@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 import { analyzeHeatmap, generateExplanation } from './utils/heatmapAnalysis';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 // Turns "smooth_muscle" / "SMOOTH_MUSCLE" into "Smooth Muscle" for
 // display inside generated explanation sentences.

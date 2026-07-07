@@ -10,6 +10,7 @@ frontend/dist/
 
 # Dataset files (large binaries)
 datasets/
+datasets_backup/
 
 # Python Cache
 __pycache__/
