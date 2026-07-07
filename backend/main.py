@@ -12,7 +12,11 @@ app = FastAPI(
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://medical-ai-platform-1-u7df.onrender.com/"],  # For development; can restrict in production
+    allow_origins=[
+        "https://medical-ai-platform-theta.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],# For development; can restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
