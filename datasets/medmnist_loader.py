@@ -42,6 +42,83 @@ def get_transforms(model_type: str = "cnn"):
         
     return train_transform, eval_transform
 
+def download_dataset_if_not_exists():
+    """
+    Ensure the PathMNIST dataset file exists under settings.DATASETS_DIR.
+    If not, download it using requests (more robust than torchvision's default downloader).
+    """
+    import hashlib
+    import requests
+    from medmnist.info import INFO
+    
+    dataset_name = "pathmnist"
+    filename = f"{dataset_name}.npz"
+    filepath = settings.DATASETS_DIR / filename
+    
+    # Create directories if they do not exist
+    settings.DATASETS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    info = INFO[dataset_name]
+    url = info["url"]
+    expected_md5 = info["MD5"]
+    
+    def check_md5(path, expected):
+        md5 = hashlib.md5()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(8192), b''):
+                md5.update(chunk)
+        return md5.hexdigest() == expected
+
+    if filepath.exists():
+        print(f"Checking MD5 for existing dataset file: {filepath}")
+        try:
+            if check_md5(filepath, expected_md5):
+                print("Dataset file is valid. Skipping download.")
+                return
+            else:
+                print("Existing dataset file is corrupted or outdated. Redownloading...")
+                filepath.unlink()
+        except Exception as e:
+            print(f"Error checking existing file: {e}. Redownloading...")
+            try:
+                filepath.unlink()
+            except Exception:
+                pass
+            
+    print(f"Downloading PathMNIST dataset from {url} to {filepath}...")
+    try:
+        response = requests.get(url, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        # Download with progress logging
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        
+        with open(filepath, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        # Print progress only at significant milestones
+                        print(f"Download progress: {percent:.1f}% ({downloaded / (1024*1024):.1f} MB / {total_size / (1024*1024):.1f} MB)")
+                            
+        print("Download complete. Verifying integrity...")
+        if check_md5(filepath, expected_md5):
+            print("Verification successful!")
+        else:
+            raise RuntimeError("Downloaded file failed MD5 integrity check.")
+            
+    except Exception as e:
+        if filepath.exists():
+            try:
+                filepath.unlink()
+            except Exception:
+                pass
+        print(f"Error downloading dataset: {e}")
+        raise RuntimeError(f"Failed to download PathMNIST dataset: {e}")
+
 def get_dataloader(
     model_type: str = "cnn",
     split: str = "train",
@@ -59,11 +136,13 @@ def get_dataloader(
     if shuffle is None:
         shuffle = True if split == "train" else False
         
-    # MedMNIST handles downloading internally
+    # Ensure dataset is downloaded using requests
+    download_dataset_if_not_exists()
+    
     dataset = PathMNIST(
         split=split,
         transform=transform,
-        download=True,
+        download=False,
         root=str(settings.DATASETS_DIR)
     )
     
